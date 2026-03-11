@@ -46,6 +46,29 @@ class RateLimiter:
 
 _rate_limiter = RateLimiter(max_requests=20, window_seconds=60)
 
+# ---------------------------------------------------------------------------
+# Search query log — in-memory ring buffer + JSONL file on disk
+# ---------------------------------------------------------------------------
+SEARCH_LOG_FILE = "searches.log"
+_search_log: list = []          # last N entries in memory
+_search_log_lock = threading.Lock()
+_SEARCH_LOG_MAX = 10_000        # cap in-memory list
+
+
+def _log_search(ip: str, query: str) -> None:
+    """Append a search entry to the in-memory list and to searches.log on disk."""
+    entry = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "ip": ip, "q": query}
+    with _search_log_lock:
+        _search_log.append(entry)
+        if len(_search_log) > _SEARCH_LOG_MAX:
+            _search_log.pop(0)
+    try:
+        with open(SEARCH_LOG_FILE, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        print(f"[log] could not write searches.log: {exc}")
+
+
 # Security headers added to every response
 _SECURITY_HEADERS = [
     ("X-Content-Type-Options", "nosniff"),
@@ -86,6 +109,7 @@ def load_local_env(env_path: str = ".env"):
 load_local_env()
 
 API_TOKEN = os.environ.get("REPLICATE_API_TOKEN")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 TEXT_MODEL_URL = "https://api.replicate.com/v1/models/meta/llama-4-scout-instruct/predictions"
 IMAGE_MODEL_URL = "https://api.replicate.com/v1/models/prunaai/z-image-turbo/predictions"
@@ -703,10 +727,25 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
                 if not self._check_rate_limit():
                     return
                 self._handle_page_stream()
+            elif self.path.startswith("/api/admin/searches"):
+                self._handle_admin_searches()
             else:
                 super().do_GET()
         except Exception as exc:
             print(f"[error] GET {self.path}: {exc}")
+
+    def _handle_admin_searches(self):
+        """Return recent search log as JSON. Requires ?token=ADMIN_TOKEN."""
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        token = params.get("token", [""])[0]
+        if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+            self._send_json({"error": "Forbidden"}, 403)
+            return
+        limit = int(params.get("limit", ["500"])[0])
+        with _search_log_lock:
+            entries = list(_search_log[-limit:])
+        self._send_json({"count": len(entries), "searches": entries})
 
     def do_POST(self):
         try:
@@ -766,6 +805,7 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
                 )
                 return
 
+            _log_search(self._client_ip(), query)
             print(f"[search] q={query!r} page={page}")
             with ThreadPoolExecutor(max_workers=2) as pool:
                 text_future = pool.submit(generate_search_results, query, page)
