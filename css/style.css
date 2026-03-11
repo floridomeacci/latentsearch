@@ -344,6 +344,15 @@ select:focus-visible {
     font-weight: 500;
 }
 .footer-credit:hover { color: #b91c1c !important; }
+.footer-coffee {
+    display: inline-block;
+    margin-left: 14px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.footer-coffee:hover { color: rgba(255,255,255,0.7); }
 .footer-disclaimer {
     font-size: 11px;
     color: rgba(255,255,255,0.2);
@@ -823,6 +832,8 @@ select:focus-visible {
 .results-footer .footer-made-by { color: #aaa; font-size: 13px; }
 .results-footer .footer-credit { color: #DC2626 !important; font-weight: 500; }
 .results-footer .footer-credit:hover { color: #b91c1c !important; }
+.results-footer .footer-coffee { color: rgba(0,0,0,0.35); }
+.results-footer .footer-coffee:hover { color: rgba(0,0,0,0.7); }
 .results-footer .footer-disclaimer { font-size: 11px; color: #bbb; font-style: italic; }
 
 /* Image filter chips */
