@@ -1179,40 +1179,77 @@ select:focus-visible {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Page generation loading overlay */
+/* ── Page-viewer generation overlay ── */
 .pv-gen-overlay {
     display: none;
     position: absolute;
     inset: 0;
     z-index: 4;
-    background: #fff;
+    background: #202124;
+    background-image: radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 24px 24px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 18px;
+    gap: 0;
 }
-.pv-gen-overlay.visible { display: flex; }
-.pv-gen-spinner {
-    width: 28px;
-    height: 28px;
-    border: 2px solid #e8eaed;
-    border-top-color: #4285f4;
-    border-radius: 50%;
-    animation: spin 0.75s linear infinite;
-    flex-shrink: 0;
+.pv-gen-overlay.visible {
+    display: flex;
+    animation: pvOverlayIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
 }
+@keyframes pvOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Waveform bars */
+.pv-gen-label {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8ab4f8;
+    margin-bottom: 20px;
+}
+.pv-gen-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 32px;
+    margin-bottom: 28px;
+}
+.pv-gen-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: #8ab4f8;
+    transform-origin: bottom;
+    animation: pvBarPulse 1.4s cubic-bezier(0.4,0,0.6,1) infinite;
+}
+.pv-gen-bar:nth-child(1) { height: 10px; animation-delay: 0.00s; }
+.pv-gen-bar:nth-child(2) { height: 18px; animation-delay: 0.14s; }
+.pv-gen-bar:nth-child(3) { height: 28px; animation-delay: 0.28s; }
+.pv-gen-bar:nth-child(4) { height: 18px; animation-delay: 0.42s; }
+.pv-gen-bar:nth-child(5) { height: 10px; animation-delay: 0.56s; }
+@keyframes pvBarPulse {
+    0%, 100% { opacity: 0.2; transform: scaleY(0.35); }
+    50%       { opacity: 1;   transform: scaleY(1);    }
+}
+
 .pv-gen-msg {
-    color: #5f6368;
+    color: #9aa0a6;
     font-size: 13px;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     text-align: center;
     min-height: 20px;
     transition: opacity 0.35s;
+    margin-bottom: 8px;
 }
 .pv-gen-msg.fade { opacity: 0; }
 .pv-gen-timer {
-    color: #bdc1c6;
+    color: #5f6368;
     font-size: 11px;
-    font-family: system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
 }
