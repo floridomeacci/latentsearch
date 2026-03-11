@@ -948,7 +948,27 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
         print(f"[page/stream] url={url!r}")
-        result = generate_page(url, title, snippet)
+
+        # Run generation in a thread; send SSE keepalive comments every 15s while
+        # waiting so nginx (proxy_read_timeout) doesn't kill the idle connection.
+        with ThreadPoolExecutor(max_workers=1) as _pool:
+            future = _pool.submit(generate_page, url, title, snippet)
+            while True:
+                try:
+                    result = future.result(timeout=15)
+                    break  # done — exit keep-alive loop
+                except Exception as _exc:
+                    if future.done():
+                        # real error from generate_page
+                        result = {"error": str(_exc), "tokens": []}
+                        break
+                    # still running — send a keepalive comment and loop
+                    try:
+                        self.wfile.write(b": keep-alive\n\n")
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        future.cancel()
+                        return
 
         if result.get("error"):
             err = json.dumps({"error": result["error"]})
