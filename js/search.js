@@ -749,14 +749,6 @@ function normalizeSearchResults(payload) {
             <div class="page-viewer-body">
                 <div class="pv-progress-bar" id="pv-progress"><div class="pv-progress-fill" id="pv-progress-fill"></div></div>
                 <div class="pv-gen-overlay" id="pv-gen-overlay">
-                    <div class="pv-gen-label">Generating</div>
-                    <div class="pv-gen-bars">
-                        <div class="pv-gen-bar"></div>
-                        <div class="pv-gen-bar"></div>
-                        <div class="pv-gen-bar"></div>
-                        <div class="pv-gen-bar"></div>
-                        <div class="pv-gen-bar"></div>
-                    </div>
                     <div class="pv-gen-msg" id="pv-gen-msg">Loading…</div>
                     <div class="pv-gen-timer" id="pv-gen-timer"></div>
                 </div>
