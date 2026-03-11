@@ -11,7 +11,5 @@
 window.API_BASE = (() => {
     const h = window.location.hostname;
     if (h === 'localhost' || h === '127.0.0.1') return '';
-    // Replace the string below with your backend URL, e.g.:
-    // return 'https://latentsearch-api.railway.app';
-    return '';
+    return 'https://api.latentsearch.net';
 })();
