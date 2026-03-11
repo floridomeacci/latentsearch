@@ -836,7 +836,7 @@ function normalizeSearchResults(payload) {
         faviconEl.classList.add('loading');
         // Crawl to 85% over ~90s, simulating slow generation
         requestAnimationFrame(() => {
-            progressFill.style.transition = 'width 90s cubic-bezier(0.05,0.3,0.5,1)';
+            progressFill.style.transition = 'width 20s cubic-bezier(0.05,0.3,0.5,1)';
             progressFill.style.width = '85%';
         });
         startGenOverlay();
@@ -892,6 +892,144 @@ function normalizeSearchResults(payload) {
         }
     }
 
+    // ── Seeded template engine ──────────────────────────────────────────────
+    function _rng(seed) {
+        let h = seed >>> 0;
+        return function () {
+            h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b) >>> 0; h ^= h >>> 16;
+            return (h >>> 0) / 4294967296;
+        };
+    }
+    function _strSeed(str) {
+        let h = 0xdeadbeef;
+        for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 2654435761) >>> 0;
+        return h;
+    }
+    function _pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+
+    const _FONTS = [
+        { d: 'Playfair Display',   b: 'Source Serif 4',  gf: 'Playfair+Display:wght@700;900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap' },
+        { d: 'DM Serif Display',   b: 'DM Sans',         gf: 'DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap' },
+        { d: 'Fraunces',           b: 'Epilogue',        gf: 'Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900&family=Epilogue:wght@300;400;500&display=swap' },
+        { d: 'Cormorant Garamond', b: 'Jost',            gf: 'Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Jost:wght@300;400;500&display=swap' },
+        { d: 'Space Grotesk',      b: 'Space Grotesk',   gf: 'Space+Grotesk:wght@300;400;500;600;700&display=swap' },
+        { d: 'Libre Baskerville',  b: 'Libre Franklin',  gf: 'Libre+Baskerville:ital,wght@0,700;1,400&family=Libre+Franklin:wght@400;500;600&display=swap' },
+        { d: 'Syne',               b: 'Syne',            gf: 'Syne:wght@400;600;700;800&display=swap' },
+        { d: 'Unbounded',          b: 'Outfit',          gf: 'Unbounded:wght@600;700;900&family=Outfit:wght@300;400;500&display=swap' },
+    ];
+    const _PALETTES = [
+        { p: '#1a3a2a', bg: '#f5f2ed', acc: '#c9963a', tx: '#1a1a1a', s: '#dfe9de' },
+        { p: '#7a1e28', bg: '#fdf8f5', acc: '#c17f24', tx: '#1a0a08', s: '#fbe8e4' },
+        { p: '#1c3557', bg: '#f2f6fb', acc: '#e8792a', tx: '#0f1923', s: '#ddeaf7' },
+        { p: '#2d4a3e', bg: '#f6f9f4', acc: '#88b04b', tx: '#1a1f18', s: '#e1eedd' },
+        { p: '#5c2d91', bg: '#f8f4ff', acc: '#e8a030', tx: '#1a0f2e', s: '#e8dcf7' },
+        { p: '#8a3500', bg: '#fdf5ee', acc: '#3d9e8a', tx: '#1f0e00', s: '#fde5cc' },
+        { p: '#0d3b4f', bg: '#edf7fb', acc: '#f0a500', tx: '#0a1e28', s: '#c8e8f5' },
+        { p: '#1f1f1f', bg: '#f8f8f6', acc: '#c0392b', tx: '#1f1f1f', s: '#eeeeec' },
+    ];
+
+    function buildSeededPage(urlStr, c) {
+        const rng    = _rng(_strSeed(urlStr));
+        const font   = _pick(rng, _FONTS);
+        const pal    = _pick(rng, _PALETTES);
+        const layout = _pick(rng, ['default', 'wide', 'editorial']);
+        const heroH  = _pick(rng, [340, 400, 480]);
+        const cw     = layout === 'wide' ? '1100px' : '760px';
+        const esc    = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const paras  = b => (b || '').split(/\n\n+/).filter(Boolean).map(p => '<p>' + esc(p) + '</p>').join('');
+
+        const brand  = esc(c.brand  || 'Site');
+        const nav    = (c.nav || ['Home', 'About', 'Articles', 'Topics', 'Contact']).slice(0, 5);
+        const hero   = c.hero || { headline: brand, sub: '' };
+        const sects  = Array.isArray(c.sections) ? c.sections : [];
+        const ftxt   = esc(c.footer || '\u00a9 2026 ' + brand);
+        const df     = "'" + font.d + "',Georgia,serif";
+        const bf     = "'" + font.b + "',system-ui,sans-serif";
+
+        const navHtml =
+            '<nav style="background:' + pal.p + ';padding:0 clamp(16px,5vw,60px);position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;height:58px;gap:24px;">' +
+            '<span style="font-family:' + df + ';font-weight:700;font-size:1.05rem;color:#fff;letter-spacing:-.01em;">' + brand + '</span>' +
+            '<div style="display:flex;gap:clamp(12px,2.5vw,32px);">' +
+            nav.map(n => '<a href="#" style="font-family:' + bf + ';color:rgba(255,255,255,.82);font-size:.875rem;text-decoration:none;">' + esc(n) + '</a>').join('') +
+            '</div></nav>';
+
+        let imgIdx = 0;
+        const heroImg = '<img src="" data-latent-img="cinematic hero photograph for ' + esc(hero.headline) + '" data-latent-idx="' + (imgIdx++) + '" alt="hero" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.38;">';
+        const heroHtml =
+            '<header style="position:relative;background:' + pal.p + ';min-height:' + heroH + 'px;display:flex;align-items:flex-end;overflow:hidden;">' +
+            heroImg +
+            '<div style="position:relative;z-index:1;padding:clamp(32px,6vw,76px) clamp(16px,5vw,60px);max-width:820px;">' +
+            '<h1 style="font-family:' + df + ';font-size:clamp(2rem,5vw,3.4rem);font-weight:900;color:#fff;line-height:1.1;margin:0 0 14px;letter-spacing:-.02em;">' + esc(hero.headline) + '</h1>' +
+            (hero.sub ? '<p style="font-family:' + bf + ';color:rgba(255,255,255,.85);font-size:clamp(.95rem,2vw,1.15rem);line-height:1.6;margin:0;max-width:560px;">' + esc(hero.sub) + '</p>' : '') +
+            '</div></header>';
+
+        let secHtml = '';
+        sects.forEach(function (sec, i) {
+            const secBg  = (i % 3 === 2) ? pal.s : pal.bg;
+            const hasImg = !!sec.has_image;
+            const ci     = imgIdx;
+            if (hasImg) imgIdx++;
+            const imgTag = hasImg
+                ? '<img src="" data-latent-img="editorial photograph for ' + esc(sec.heading) + '" data-latent-idx="' + ci + '" alt="' + esc(sec.heading) + '" style="width:100%;height:260px;object-fit:cover;border-radius:8px;display:block;">'
+                : '';
+            const quote  = sec.quote
+                ? '<blockquote style="border-left:3px solid ' + pal.acc + ';margin:28px 0;padding:12px 20px;font-family:' + df + ';font-size:1.15rem;font-style:italic;color:' + pal.p + ';line-height:1.55;">' + esc(sec.quote) + '</blockquote>'
+                : '';
+            const h2   = '<h2 style="font-family:' + df + ';font-size:clamp(1.3rem,2.5vw,1.9rem);font-weight:700;color:' + pal.tx + ';margin:0 0 18px;">' + esc(sec.heading) + '</h2>';
+            const body = '<div style="font-family:' + bf + ';font-size:1rem;line-height:1.75;color:' + pal.tx + ';">' + paras(sec.body) + '</div>';
+
+            if (hasImg && layout === 'default') {
+                const ir = i % 2 === 0;
+                secHtml +=
+                    '<section style="background:' + secBg + ';padding:clamp(40px,6vw,80px) clamp(16px,5vw,60px);">' +
+                    '<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);align-items:start;">' +
+                    (ir ? '<div>' + imgTag + '</div><div>' + h2 + body + '</div>' : '<div>' + h2 + body + '</div><div>' + imgTag + '</div>') +
+                    '</div></section>';
+            } else {
+                secHtml +=
+                    '<section style="background:' + secBg + ';padding:clamp(40px,6vw,80px) clamp(16px,5vw,60px);">' +
+                    '<div style="max-width:' + cw + ';margin:0 auto;">' + h2 +
+                    (hasImg ? '<div style="margin:0 0 28px;">' + imgTag + '</div>' : '') +
+                    body + quote + '</div></section>';
+            }
+        });
+
+        const footerHtml =
+            '<footer style="background:' + pal.p + ';padding:clamp(24px,4vw,48px) clamp(16px,5vw,60px);margin-top:auto;">' +
+            '<div style="max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+            '<span style="font-family:' + df + ';font-weight:700;color:#fff;">' + brand + '</span>' +
+            '<span style="font-family:' + bf + ';color:rgba(255,255,255,.6);font-size:.85rem;">' + ftxt + '</span>' +
+            '</div></footer>';
+
+        // Split </script> to prevent parser confusion
+        const sc = '<' + 'script>';
+        const ec = '<' + '/script>';
+        const inlineScript = sc +
+            '(function(){' +
+            'document.addEventListener("click",function(e){var a=e.target.closest("a");if(a){e.preventDefault();e.stopPropagation();}},true);' +
+            'window.addEventListener("message",function(e){if(!e.data||e.data.type!=="latent-img")return;' +
+            'var imgs=document.querySelectorAll("img[data-latent-idx]");' +
+            'for(var i=0;i<imgs.length;i++){if(String(imgs[i].getAttribute("data-latent-idx"))===String(e.data.idx)){imgs[i].src=e.data.url;break;}}' +
+            '});' +
+            '})();' + ec;
+
+        const css =
+            '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}' +
+            'html,body{height:100%;}' +
+            'body{min-height:100vh;display:flex;flex-direction:column;background:' + pal.bg + ';color:' + pal.tx + ';}' +
+            'main{flex:1;}p{margin-bottom:1em;}p:last-child{margin-bottom:0;}' +
+            'img[src=""]{background:' + pal.s + ';}';
+
+        return '<!DOCTYPE html>\n<html lang="en"><head>' +
+            '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+            '<link href="https://fonts.googleapis.com/css2?family=' + font.gf + '" rel="stylesheet">' +
+            '<style>' + css + '</style>' +
+            '</head><body>\n' + navHtml + '\n' + heroHtml + '\n<main>' + secHtml + '</main>\n' + footerHtml + '\n' + inlineScript + '\n</body></html>';
+    }
+    // ── End template engine ─────────────────────────────────────────────────
+
     function openPageViewer(url, title, snippet) {
         history.push({ url, title, snippet });
         backBtn.disabled = history.length <= 1;
@@ -910,12 +1048,12 @@ function normalizeSearchResults(payload) {
             iframe.srcdoc = cached.finalHtml;
             iframe.onload = () => {
                 iframe.onload = null;
-                hydrateLazyImages(cached.rawBuffer);
+                hydrateLazyImages(cached.finalHtml);
             };
             return;
         }
 
-        // ── Cache miss: stream from API ──
+        // ── Cache miss: fetch JSON content, build seeded template ──
         currentUrl = url;
         currentRawBuffer = '';
         iframe.srcdoc = '';
@@ -923,94 +1061,33 @@ function normalizeSearchResults(payload) {
 
         if (activeEs) { activeEs.close(); activeEs = null; }
 
+        const ctrl = new AbortController();
+        activeEs = { close: () => ctrl.abort() };
+
         const params = new URLSearchParams({ url, title, snippet });
-        const es = new EventSource((window.API_BASE || '') + `/api/page/stream?${params}`);
-
-        let htmlBuffer = '';
-
-        es.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                if (data.error) {
-                    es.close(); activeEs = null;
-                    finishProgress();
-                    iframe.srcdoc = `<html><body style="font-family:sans-serif;padding:40px;color:#ea4335;">
-                        <h2>Could not load page</h2><p>${data.error}</p></body></html>`;
-                    return;
-                }
-
-                if (data.done) {
-                    es.close(); activeEs = null;
-                    let html = htmlBuffer.trim();
-                    if (html.startsWith('\`\`\`')) {
-                        html = html.replace(/^\`\`\`[a-z]*\n?/, '').replace(/\`\`\`\s*$/, '').trim();
-                    }
-                    // Strip all real hrefs so no link can navigate away from the iframe
-                    html = html.replace(/(<a\b[^>]*)\shref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
-                        (_m, before) => before + ' href="#"');
-                    // Tag each data-latent-img with a numeric index so the postMessage handler can find it
-                    let imgIdx = 0;
-                    html = html.replace(/(<img[^>]*data-latent-img="[^"]*"[^>]*)(>|\/?>)/g,
-                        (m, before, end) => `${before} data-latent-idx="${imgIdx++}"${end}`);
-                    // Inject postMessage listener + shimmer keyframe + link trap into the page
-                    const listenerScript = `<script>
-(function(){
-  var style=document.createElement('style');
-  style.textContent='html{height:100%;}body{min-height:100vh;height:100%;margin:0;display:flex;flex-direction:column;}body>main,body>[role=main]{flex:1 0 auto;}body>footer{margin-top:auto;flex-shrink:0;}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}a[href]:not([href^="#"]){cursor:pointer;}';
-  document.head.appendChild(style);
-  // Prevent all link navigation — pages are self-contained previews
-  document.addEventListener('click',function(e){
-    var a=e.target.closest('a');
-    if(a){
-      var href=a.getAttribute('href');
-      // Allow in-page anchors (#section) and onclick-only buttons — block everything else
-      if(!href||href==='#'||href.startsWith('#'))return;
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  },true);
-  // Apply shimmer to all placeholders
-  document.querySelectorAll('img[data-latent-img]').forEach(function(img){
-    img.style.cssText+='background:linear-gradient(90deg,#e8eaed 25%,#f1f3f4 50%,#e8eaed 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;min-height:200px;';
-  });
-  window.addEventListener('message',function(e){
-    if(!e.data||e.data.type!=='latent-img')return;
-    var img=document.querySelector('img[data-latent-idx="'+e.data.idx+'"]');
-    if(img){img.src=e.data.url;img.style.background='';img.style.animation='';img.style.minHeight='';}
-  });
-})();
-<\/script>`;
-                    html = html.replace('</body>', listenerScript + '</body>');
-                    if (!html.includes('</body>')) html += listenerScript;
-                    // ── Save to cache ──
-                    pageCache.set(url, { finalHtml: html, rawBuffer: htmlBuffer });
-                    iframe.srcdoc = html;
-                    finishProgress();
-                    hydrateLazyImages(htmlBuffer);
-                    return;
-                }
-
-                if (data.token) {
-                    htmlBuffer += data.token;
-                    currentRawBuffer = htmlBuffer; // keep in sync for close-while-streaming
-                }
-            } catch (_e) { /* ignore */ }
-        };
-
-        es.onerror = () => {
-            es.close(); activeEs = null;
-            finishProgress();
-            if (!htmlBuffer.trim()) {
-                iframe.srcdoc = `<html><body style="font-family:sans-serif;padding:40px;color:#ea4335;">
-                    <h2>Failed to load page</h2><p>Server may not be running.</p></body></html>`;
-            } else {
-                iframe.srcdoc = htmlBuffer;
-            }
-        };
+        fetch((window.API_BASE || '') + `/api/page/content?${params}`, { signal: ctrl.signal })
+            .then(r => r.json())
+            .then(result => {
+                activeEs = null;
+                if (result.error) throw new Error(result.error);
+                const html = buildSeededPage(url, result.content || {});
+                pageCache.set(url, { finalHtml: html });
+                iframe.srcdoc = html;
+                iframe.onload = () => {
+                    iframe.onload = null;
+                    hydrateLazyImages(html);
+                };
+                finishProgress();
+            })
+            .catch(err => {
+                activeEs = null;
+                if (err.name === 'AbortError') return;
+                finishProgress();
+                iframe.srcdoc = '<html><body style="font-family:sans-serif;padding:40px;color:#ea4335;"><h2>Could not load page</h2><p>' + err.message + '</p></body></html>';
+            });
     }
 
-    closeBtn.onclick = closeViewer;
+        closeBtn.onclick = closeViewer;
     overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
 
     backBtn.onclick = () => {

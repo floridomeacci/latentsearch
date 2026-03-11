@@ -6,6 +6,7 @@ Keeps the API key server-side only.
 
 import json
 import os
+import re
 import mimetypes
 import time
 import random
@@ -620,66 +621,61 @@ def generate_image_results(query: str, page: int = 1, count: int = 8, steps: int
     return {"images": results}
 
 
-def generate_page(url: str, title: str, snippet: str) -> dict:
-    """Ask the LLM to write a realistic full HTML page for the given URL."""
+def generate_page_content(url: str, title: str, snippet: str) -> dict:
+    """Ask the LLM to generate page text content as JSON (no HTML, fast)."""
     full_prompt = (
-        "You are an exceptional front-end designer. Output ONLY valid HTML starting with <!DOCTYPE html>. "
-        "No markdown, no code fences, no explanations. Close every tag.\n\n"
-        f"Design a memorable, production-quality webpage for:\n"
+        f"Write realistic website content as JSON for this page.\n"
         f"URL: {url}\nTitle: {title}\nDescription: {snippet}\n\n"
-        "DESIGN DIRECTION:\n"
-        "Before writing code, decide on ONE bold aesthetic that fits the topic and commit fully: "
-        "brutally minimal, maximalist editorial, retro-futuristic, organic/earthy, luxury/refined, "
-        "playful/bright, brutalist/raw, art deco geometric, etc. Every choice must serve that direction.\n\n"
-        "COLOR:\n"
-        "- Pick a strong primary color fitting the topic — deep green, electric blue, warm terracotta, "
-        "rich burgundy, midnight navy, saffron, forest, etc. NEVER default to grey/white/light-blue.\n"
-        "- AVOID: cyan-on-dark, purple-to-blue gradients, neon on black. Those are AI clichés.\n"
-        "- Tint neutrals toward the brand hue. Page bg = very light tint, NOT plain white.\n"
-        "- Nav = primary color bg, white text. Footer = dark variant of primary.\n"
-        "- Hero = full-width primary color or bold gradient, white text, min 300px tall.\n\n"
-        "TYPOGRAPHY:\n"
-        "- Use a Google Font (load via @import in <style>) — pick something characterful, not Inter/Roboto/Arial.\n"
-        "- Strong visual hierarchy: big h1 (2.8rem+), clear h2, readable body (1rem, 1.6 line-height).\n\n"
-        "LAYOUT:\n"
-        "- Vary spacing — don't use identical padding everywhere. Create rhythm.\n"
-        "- NOT everything in cards. Mix: full-bleed sections, featured items, text-heavy areas.\n"
-        "- If using cards, vary sizes or alternate layouts. Avoid 3-identical-cards-in-a-row templates.\n"
-        "- Asymmetry > centered everything. Left-align body text.\n\n"
-        "AVOID these AI slop patterns:\n"
-        "- Glassmorphism, generic drop shadows, rounded rect + thick colored left-border accent\n"
-        "- Identical card grid (icon + heading + text × 6)\n"
-        "- Hero with big metric number + gradient accent\n"
-        "- Every button styled as primary CTA\n\n"
-        "LINKS:\n"
-        "- This is a SELF-CONTAINED landing page. Do NOT include any <a href> pointing to real pages or URLs.\n"
-        "- Every <a> tag MUST use href=\"#\" — no real URLs, no relative paths, no mailto, no tel.\n"
-        "- Nav items, buttons, CTAs: all href=\"#\". No exceptions.\n\n"
-        "STRUCTURE:\n"
-        "- body: display:flex;flex-direction:column;min-height:100vh;margin:0\n"
-        "- Sticky <nav>, <main flex:1>, <footer margin-top:auto>\n"
-        "- Max content width 1100px centered. 2-3 main sections.\n"
-        "- Real content only, no lorem ipsum. Aim for ~170 lines total.\n"
-        "- Images: <img src=\"\" data-latent-img=\"[vivid description]\" alt=\"[alt]\" "
-        "style=\"width:100%;height:220px;object-fit:cover;border-radius:8px;background:#e8eaed;\"> (2-3 total)\n\n"
-        "Output the HTML now:"
+        "Output ONLY valid JSON, no markdown, no code fences. Use this exact structure:\n"
+        '{"brand":"2-3 word site name","tagline":"short slogan",'
+        '"nav":["item1","item2","item3","item4","item5"],'
+        '"hero":{"headline":"attention-grabbing headline 6-12 words","sub":"supporting sentence 15-25 words"},'
+        '"sections":['
+        '{"heading":"first section title","body":"2-3 paragraphs separated by \\n\\n","has_image":true},'
+        '{"heading":"second section title","body":"2-3 paragraphs","quote":"memorable pull quote"},'
+        '{"heading":"third section title","body":"2-3 paragraphs"}'
+        '],'
+        '"footer":"short footer text"}\n\n'
+        "Write specific, credible content matching the topic. No lorem ipsum."
     )
     payload = {
         "input": {
             "prompt": full_prompt,
-            "max_tokens": 2800,
-            "temperature": 0.7,
-            "top_p": 0.92,
+            "max_tokens": 900,
+            "temperature": 0.6,
+            "top_p": 0.9,
         }
     }
-    resp = call_replicate(PAGE_MODEL_URL, payload, max_polls=90)
+    resp = call_replicate(PAGE_MODEL_URL, payload, max_polls=40)
     if resp.get("error"):
-        return {"error": resp["error"], "tokens": []}
+        return {"error": resp["error"]}
 
     output = resp.get("output", [])
-    if isinstance(output, str):
-        output = [output]
-    return {"tokens": output}
+    if isinstance(output, list):
+        output = "".join(output)
+    output = output.strip()
+
+    # Strip markdown code fences if present
+    if output.startswith("```"):
+        lines = output.split("\n")[1:]
+        output = "\n".join(lines)
+        if output.endswith("```"):
+            output = output[:-3]
+        output = output.strip()
+
+    try:
+        data = json.loads(output)
+        return {"content": data}
+    except json.JSONDecodeError:
+        start = output.find("{")
+        end   = output.rfind("}") + 1
+        if start >= 0 and end > start:
+            try:
+                data = json.loads(output[start:end])
+                return {"content": data}
+            except Exception:
+                pass
+        return {"error": "Failed to parse content", "raw": output[:300]}
 
 
 class LatentSearchHandler(SimpleHTTPRequestHandler):
@@ -724,10 +720,10 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
                 if not self._check_rate_limit():
                     return
                 self._handle_images_stream()
-            elif self.path.startswith("/api/page/stream"):
+            elif self.path.startswith("/api/page/content"):
                 if not self._check_rate_limit():
                     return
-                self._handle_page_stream()
+                self._handle_page_content()
             elif self.path.startswith("/api/admin/searches"):
                 self._handle_admin_searches()
             else:
@@ -918,80 +914,29 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
         if "/api/" in message:
             super().log_message(format, *args)
 
-    def _handle_page_stream(self):
-        """SSE endpoint: streams LLM-generated HTML tokens for a fake page."""
+    def _handle_page_content(self):
+        """JSON endpoint: returns LLM-generated text content for a page (fast, no HTML)."""
         if not _check_daily_limit("page"):
             self._send_json({"error": "Daily page limit reached. Try again tomorrow."}, 429)
             return
         try:
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
-            url = params.get("url", [""])[0]
-            title = params.get("title", [""])[0]
+            url     = params.get("url",     [""])[0]
+            title   = params.get("title",   [""])[0]
             snippet = params.get("snippet", [""])[0]
         except Exception as exc:
-            print(f"[error] _handle_page_stream parse: {exc}")
+            print(f"[error] _handle_page_content parse: {exc}")
             self.send_error(400, "Bad Request")
             return
 
         if not url:
-            self.send_response(400)
-            self.end_headers()
+            self._send_json({"error": "url required"}, 400)
             return
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Connection", "keep-alive")
-        self._add_security_headers()
-        self.end_headers()
-
-        print(f"[page/stream] url={url!r}")
-
-        # Run generation in a thread; send SSE keepalive comments every 15s while
-        # waiting so nginx (proxy_read_timeout) doesn't kill the idle connection.
-        with ThreadPoolExecutor(max_workers=1) as _pool:
-            future = _pool.submit(generate_page, url, title, snippet)
-            while True:
-                try:
-                    result = future.result(timeout=15)
-                    break  # done — exit keep-alive loop
-                except Exception as _exc:
-                    if future.done():
-                        # real error from generate_page
-                        result = {"error": str(_exc), "tokens": []}
-                        break
-                    # still running — send a keepalive comment and loop
-                    try:
-                        self.wfile.write(b": keep-alive\n\n")
-                        self.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        future.cancel()
-                        return
-
-        if result.get("error"):
-            err = json.dumps({"error": result["error"]})
-            try:
-                self.wfile.write(f"data: {err}\n\n".encode())
-                self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-            return
-
-        for token in result.get("tokens", []):
-            chunk = json.dumps({"token": token})
-            try:
-                self.wfile.write(f"data: {chunk}\n\n".encode())
-                self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                return
-
-        try:
-            self.wfile.write(b"data: {\"done\": true}\n\n")
-            self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+        print(f"[page/content] url={url!r}")
+        result = generate_page_content(url, title, snippet)
+        self._send_json(result)
 
 
 if __name__ == "__main__":
