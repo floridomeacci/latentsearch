@@ -946,6 +946,9 @@ function normalizeSearchResults(payload) {
                     if (html.startsWith('\`\`\`')) {
                         html = html.replace(/^\`\`\`[a-z]*\n?/, '').replace(/\`\`\`\s*$/, '').trim();
                     }
+                    // Strip all real hrefs so no link can navigate away from the iframe
+                    html = html.replace(/(<a\b[^>]*)\shref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+                        (_m, before) => before + ' href="#"');
                     // Tag each data-latent-img with a numeric index so the postMessage handler can find it
                     let imgIdx = 0;
                     html = html.replace(/(<img[^>]*data-latent-img="[^"]*"[^>]*)(>|\/?>)/g,
