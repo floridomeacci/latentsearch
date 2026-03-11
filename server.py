@@ -646,7 +646,7 @@ def generate_page_content(url: str, title: str, snippet: str) -> dict:
             "top_p": 0.9,
         }
     }
-    resp = call_replicate(PAGE_MODEL_URL, payload, max_polls=40)
+    resp = call_replicate(TEXT_MODEL_URL, payload, max_polls=40)
     if resp.get("error"):
         return {"error": resp["error"]}
 
