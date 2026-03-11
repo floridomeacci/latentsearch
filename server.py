@@ -598,33 +598,49 @@ def generate_image_results(query: str, page: int = 1, count: int = 8, steps: int
 def generate_page(url: str, title: str, snippet: str) -> dict:
     """Ask the LLM to write a realistic full HTML page for the given URL."""
     full_prompt = (
-        "You are a front-end developer who makes visually striking, colorful websites. "
-        "Output ONLY valid HTML starting with <!DOCTYPE html>. "
-        "No markdown, no code fences, no comments outside tags. Close every tag.\n\n"
-        f"Build a vivid, colorful, realistic webpage for:\n"
+        "You are an exceptional front-end designer. Output ONLY valid HTML starting with <!DOCTYPE html>. "
+        "No markdown, no code fences, no explanations. Close every tag.\n\n"
+        f"Design a memorable, production-quality webpage for:\n"
         f"URL: {url}\nTitle: {title}\nDescription: {snippet}\n\n"
-        "VISUAL RULES — follow these strictly:\n"
-        "- Choose a bold primary color that fits the topic (e.g. deep green for nature/food, electric blue for tech, warm orange for travel, rich purple for luxury, crimson for news/sports). NOT plain white or grey.\n"
-        "- <nav>: use the primary color as background, white text/links. Sticky, logo left, 3 links right.\n"
-        "- Hero section: full-width colored background (primary color or a gradient from primary to a darker shade). White text. Large h1 (2.5rem), subtitle, white-bordered CTA button. Min-height 320px. Centered content.\n"
-        "- Page background: a very light tint of the primary color (e.g. #f0f7ff for blue, #f5f0ff for purple) — NOT plain white.\n"
-        "- Cards: white background, colored top border (4px solid primary), border-radius:10px, subtle box-shadow.\n"
-        "- Section headings: primary color.\n"
-        "- Footer: dark version of primary color, white text.\n"
-        "- body: display:flex;flex-direction:column;min-height:100vh;margin:0;font-family:system-ui,sans-serif\n"
-        "- Max content width 1100px centered. <main flex:1> with hero + 2-3 sections. <footer margin-top:auto>.\n"
-        "- Real content, no lorem ipsum. Concise — aim for ~160 lines of HTML total.\n"
-        "- For images: <img src=\"\" data-latent-img=\"[description]\" alt=\"[alt]\" "
-        "style=\"width:100%;height:200px;object-fit:cover;border-radius:8px;background:#e8eaed;\">\n"
-        "Include 2-3 image placeholders.\n"
+        "DESIGN DIRECTION:\n"
+        "Before writing code, decide on ONE bold aesthetic that fits the topic and commit fully: "
+        "brutally minimal, maximalist editorial, retro-futuristic, organic/earthy, luxury/refined, "
+        "playful/bright, brutalist/raw, art deco geometric, etc. Every choice must serve that direction.\n\n"
+        "COLOR:\n"
+        "- Pick a strong primary color fitting the topic — deep green, electric blue, warm terracotta, "
+        "rich burgundy, midnight navy, saffron, forest, etc. NEVER default to grey/white/light-blue.\n"
+        "- AVOID: cyan-on-dark, purple-to-blue gradients, neon on black. Those are AI clichés.\n"
+        "- Tint neutrals toward the brand hue. Page bg = very light tint, NOT plain white.\n"
+        "- Nav = primary color bg, white text. Footer = dark variant of primary.\n"
+        "- Hero = full-width primary color or bold gradient, white text, min 300px tall.\n\n"
+        "TYPOGRAPHY:\n"
+        "- Use a Google Font (load via @import in <style>) — pick something characterful, not Inter/Roboto/Arial.\n"
+        "- Strong visual hierarchy: big h1 (2.8rem+), clear h2, readable body (1rem, 1.6 line-height).\n\n"
+        "LAYOUT:\n"
+        "- Vary spacing — don't use identical padding everywhere. Create rhythm.\n"
+        "- NOT everything in cards. Mix: full-bleed sections, featured items, text-heavy areas.\n"
+        "- If using cards, vary sizes or alternate layouts. Avoid 3-identical-cards-in-a-row templates.\n"
+        "- Asymmetry > centered everything. Left-align body text.\n\n"
+        "AVOID these AI slop patterns:\n"
+        "- Glassmorphism, generic drop shadows, rounded rect + thick colored left-border accent\n"
+        "- Identical card grid (icon + heading + text × 6)\n"
+        "- Hero with big metric number + gradient accent\n"
+        "- Every button styled as primary CTA\n\n"
+        "STRUCTURE:\n"
+        "- body: display:flex;flex-direction:column;min-height:100vh;margin:0\n"
+        "- Sticky <nav>, <main flex:1>, <footer margin-top:auto>\n"
+        "- Max content width 1100px centered. 2-3 main sections.\n"
+        "- Real content only, no lorem ipsum. Aim for ~170 lines total.\n"
+        "- Images: <img src=\"\" data-latent-img=\"[vivid description]\" alt=\"[alt]\" "
+        "style=\"width:100%;height:220px;object-fit:cover;border-radius:8px;background:#e8eaed;\"> (2-3 total)\n\n"
         "Output the HTML now:"
     )
     payload = {
         "input": {
             "prompt": full_prompt,
-            "max_tokens": 2500,
-            "temperature": 0.5,
-            "top_p": 0.9,
+            "max_tokens": 2800,
+            "temperature": 0.7,
+            "top_p": 0.92,
         }
     }
     resp = call_replicate(PAGE_MODEL_URL, payload, max_polls=90)
