@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F0F11"/>
+      <stop offset="100%" stop-color="#141418"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid lines -->
+  <line x1="0" y1="315" x2="1200" y2="315" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+  <line x1="600" y1="0" x2="600" y2="630" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+
+  <!-- Red accent bar top -->
+  <rect x="0" y="0" width="1200" height="4" fill="#DC2626"/>
+
+  <!-- Logo text -->
+  <text
+    x="600" y="290"
+    font-family="Georgia, serif"
+    font-weight="700"
+    font-size="120"
+    fill="#DC2626"
+    text-anchor="middle"
+    letter-spacing="-4"
+  >LatentSearch</text>
+
+  <!-- Tagline -->
+  <text
+    x="600" y="360"
+    font-family="Arial, sans-serif"
+    font-weight="400"
+    font-size="28"
+    fill="rgba(255,255,255,0.4)"
+    text-anchor="middle"
+    letter-spacing="0.5"
+  >The search engine where everything is AI generated.</text>
+
+  <!-- Domain -->
+  <text
+    x="600" y="540"
+    font-family="Arial, sans-serif"
+    font-weight="400"
+    font-size="20"
+    fill="rgba(255,255,255,0.2)"
+    text-anchor="middle"
+  >latentsearch.net</text>
+</svg>
