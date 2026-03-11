@@ -47,6 +47,31 @@ class RateLimiter:
 _rate_limiter = RateLimiter(max_requests=20, window_seconds=60)
 
 # ---------------------------------------------------------------------------
+# Global daily spend cap — hard limit across ALL IPs combined
+# ---------------------------------------------------------------------------
+DAILY_SEARCH_LIMIT  = int(os.environ.get("DAILY_SEARCH_LIMIT",  "500"))  # /api/search calls/day
+DAILY_PAGE_LIMIT    = int(os.environ.get("DAILY_PAGE_LIMIT",    "200"))  # /api/page/stream calls/day
+DAILY_IMAGE_LIMIT   = int(os.environ.get("DAILY_IMAGE_LIMIT",   "400"))  # /api/images/stream calls/day
+
+_daily_lock   = threading.Lock()
+_daily_counts = {"search": 0, "page": 0, "image": 0}
+_daily_reset  = time.strftime("%Y-%m-%d", time.gmtime())
+
+def _check_daily_limit(kind: str) -> bool:
+    """Return True if request is within daily global cap. Thread-safe."""
+    global _daily_reset, _daily_counts
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    limits = {"search": DAILY_SEARCH_LIMIT, "page": DAILY_PAGE_LIMIT, "image": DAILY_IMAGE_LIMIT}
+    with _daily_lock:
+        if today != _daily_reset:
+            _daily_reset  = today
+            _daily_counts = {"search": 0, "page": 0, "image": 0}
+        if _daily_counts[kind] >= limits[kind]:
+            return False
+        _daily_counts[kind] += 1
+        return True
+
+# ---------------------------------------------------------------------------
 # Search query log — in-memory ring buffer + JSONL file on disk
 # ---------------------------------------------------------------------------
 SEARCH_LOG_FILE = "searches.log"
@@ -762,6 +787,9 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def _handle_search(self):
+        if not _check_daily_limit("search"):
+            self._send_json({"error": "Daily search limit reached. Try again tomorrow."}, 429)
+            return
         try:
             body = self._read_body()
             query = body.get("query", "")
@@ -834,6 +862,9 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
 
     def _handle_images_stream(self):
         """SSE endpoint: emits one image JSON event per generated image."""
+        if not _check_daily_limit("image"):
+            self._send_json({"error": "Daily image limit reached. Try again tomorrow."}, 429)
+            return
         try:
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
@@ -885,6 +916,9 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
 
     def _handle_page_stream(self):
         """SSE endpoint: streams LLM-generated HTML tokens for a fake page."""
+        if not _check_daily_limit("page"):
+            self._send_json({"error": "Daily page limit reached. Try again tomorrow."}, 429)
+            return
         try:
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
