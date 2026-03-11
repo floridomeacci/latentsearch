@@ -5,7 +5,7 @@
 const I18N = {
     en: {
         placeholder: 'Search',
-        searchBtn: 'LatentSearch Search',
+        searchBtn: 'Search',
         luckyBtn: "I'm Feeling Lucky",
         offeredIn: 'LatentSearch offered in:',
         footerCountry: 'United States',
@@ -19,7 +19,7 @@ const I18N = {
     },
     es: {
         placeholder: 'Buscar',
-        searchBtn: 'Búsqueda LatentSearch',
+        searchBtn: 'Buscar',
         luckyBtn: 'Me siento con suerte',
         offeredIn: 'LatentSearch en:',
         footerCountry: 'Estados Unidos',
@@ -33,7 +33,7 @@ const I18N = {
     },
     fr: {
         placeholder: 'Rechercher',
-        searchBtn: 'Recherche LatentSearch',
+        searchBtn: 'Rechercher',
         luckyBtn: "J'ai de la chance",
         offeredIn: 'LatentSearch en\u00a0:',
         footerCountry: 'États-Unis',
@@ -47,7 +47,7 @@ const I18N = {
     },
     de: {
         placeholder: 'Suchen',
-        searchBtn: 'LatentSearch-Suche',
+        searchBtn: 'Suchen',
         luckyBtn: 'Auf gut Glück!',
         offeredIn: 'LatentSearch auf:',
         footerCountry: 'USA',
@@ -61,7 +61,7 @@ const I18N = {
     },
     ja: {
         placeholder: '検索',
-        searchBtn: 'LatentSearch 検索',
+        searchBtn: '検索',
         luckyBtn: '気まぐれに！',
         offeredIn: 'LatentSearch を以下の言語で:',
         footerCountry: '日本',
@@ -193,13 +193,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const luckyQueries = [
-        'why is the sky blue', 'how do black holes form', 'history of the internet',
-        'world\'s fastest animals', 'how to make sourdough bread', 'deepest point in the ocean',
-        'how does a jet engine work', 'strangest planets in the universe', 'ancient roman food',
-        'how do vaccines work', 'what is dark matter', 'tallest buildings in the world',
-        'how do octopuses think', 'history of chess', 'fastest trains in the world',
-        'how do northern lights form', 'best coffee regions in the world', 'history of origami',
-        'how do volcanoes erupt', 'world\'s most spoken languages',
+        'Dead Internet Theory',
+        'are any humans still using the internet',
+        'how to tell if a news article was written by a person',
+        'is this review real or AI generated',
+        'percentage of internet traffic that is bots',
+        'did AI write this',
+        'what was the internet like before LLMs',
+        'signs you are talking to a chatbot',
+        'AI slop explained',
+        'who is actually on social media anymore',
+        'can Google still find real information',
+        'everything online is fake now',
+        'authenticity on the internet 2025',
+        'how to find human-written content',
+        'post-truth internet era',
+        'is Wikipedia still written by humans',
+        'AI generated reviews problem',
+        'synthetic media takeover',
+        'are influencers real people',
+        'when did the internet die',
     ];
 
     async function handleLuckyClick(buttonEl) {
