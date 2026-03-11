@@ -750,8 +750,7 @@ function normalizeSearchResults(payload) {
                 <div class="pv-progress-bar" id="pv-progress"><div class="pv-progress-fill" id="pv-progress-fill"></div></div>
                 <div class="pv-gen-overlay" id="pv-gen-overlay">
                     <div class="pv-gen-spinner"></div>
-                    <div class="pv-gen-msg" id="pv-gen-msg">Designing your page…</div>
-                    <div class="pv-gen-sub">generating this site from scratch</div>
+                    <div class="pv-gen-msg" id="pv-gen-msg">Loading…</div>
                     <div class="pv-gen-timer" id="pv-gen-timer"></div>
                 </div>
                 <iframe class="page-viewer-iframe" id="pv-iframe"
@@ -776,18 +775,18 @@ function normalizeSearchResults(payload) {
     const genTimerEl  = document.getElementById('pv-gen-timer');
 
     const _genMessages = [
-        'Designing your page…',
-        'Writing the HTML…',
-        'Picking a color palette…',
-        'Building the navigation…',
-        'Centering the div…',
-        'Adding a hero section…',
-        'Styling the cards…',
-        'Writing the copy…',
-        'Building the footer…',
-        'Making it responsive…',
-        'Polishing the layout…',
+        'Loading…',
+        'Connecting to server…',
+        'Fetching content…',
+        'Retrieving page…',
         'Almost there…',
+        'Hold tight…',
+        'One moment…',
+        'Still loading…',
+        'Worth the wait…',
+        'Please wait…',
+        'On its way…',
+        'Nearly done…',
     ];
     let _genMsgIdx = 0;
     let _genMsgInterval = null;
@@ -952,12 +951,23 @@ function normalizeSearchResults(payload) {
                     let imgIdx = 0;
                     html = html.replace(/(<img[^>]*data-latent-img="[^"]*"[^>]*)(>|\/?>)/g,
                         (m, before, end) => `${before} data-latent-idx="${imgIdx++}"${end}`);
-                    // Inject postMessage listener + shimmer keyframe into the page
+                    // Inject postMessage listener + shimmer keyframe + link trap into the page
                     const listenerScript = `<script>
 (function(){
   var style=document.createElement('style');
-  style.textContent='html{height:100%;}body{min-height:100vh;height:100%;margin:0;display:flex;flex-direction:column;}body>main,body>[role=main]{flex:1 0 auto;}body>footer{margin-top:auto;flex-shrink:0;}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+  style.textContent='html{height:100%;}body{min-height:100vh;height:100%;margin:0;display:flex;flex-direction:column;}body>main,body>[role=main]{flex:1 0 auto;}body>footer{margin-top:auto;flex-shrink:0;}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}a[href]:not([href^="#"]){cursor:pointer;}';
   document.head.appendChild(style);
+  // Prevent all link navigation — pages are self-contained previews
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('a');
+    if(a){
+      var href=a.getAttribute('href');
+      // Allow in-page anchors (#section) and onclick-only buttons — block everything else
+      if(!href||href==='#'||href.startsWith('#'))return;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  },true);
   // Apply shimmer to all placeholders
   document.querySelectorAll('img[data-latent-img]').forEach(function(img){
     img.style.cssText+='background:linear-gradient(90deg,#e8eaed 25%,#f1f3f4 50%,#e8eaed 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;min-height:200px;';
