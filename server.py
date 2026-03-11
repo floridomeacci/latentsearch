@@ -182,7 +182,7 @@ def parse_results_from_model_output(output) -> dict | None:
     return None
 
 
-def call_replicate(url: str, payload: dict) -> dict:
+def call_replicate(url: str, payload: dict, max_polls: int = 60) -> dict:
     """Make a blocking call to the Replicate API."""
     if not API_TOKEN:
         return {
@@ -209,8 +209,8 @@ def call_replicate(url: str, payload: dict) -> dict:
         if not get_url:
             return prediction
 
-        for _ in range(30):
-            time.sleep(1)
+        for _ in range(max_polls):
+            time.sleep(2)
             poll_req = Request(get_url, method="GET")
             poll_req.add_header("Authorization", f"Bearer {API_TOKEN}")
             try:
@@ -597,81 +597,32 @@ def generate_image_results(query: str, page: int = 1, count: int = 8, steps: int
 
 def generate_page(url: str, title: str, snippet: str) -> dict:
     """Ask the LLM to write a realistic full HTML page for the given URL."""
-    prompt = f"""Write a complete, realistic, visually polished webpage for this URL.
-
-URL: {url}
-Page title: {title}
-Description: {snippet}
-
-━━ CRITICAL RULES ━━
-- Return ONLY raw HTML starting exactly with <!DOCTYPE html>. No markdown, no code fences, no commentary.
-- The <html> and <body> elements must have min-height:100vh and margin:0 so the page fills the full viewport.
-- The <body> must use: display:flex; flex-direction:column; min-height:100vh; margin:0.
-- The <main> (or main content wrapper) must have flex:1 so it grows and pushes the footer to the bottom.
-- The <footer> must have margin-top:auto; flex-shrink:0 so it is always pinned to the bottom of the viewport.
-- All JavaScript must be inline in <script> tags. Zero external scripts.
-- Close every single HTML tag properly. Valid, well-formed HTML5 only.
-- Use only web-safe font stacks: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif.
-
-━━ STRUCTURE ━━
-Use this exact section structure:
-1. <nav> — sticky top bar, 60px tall, logo left + nav links right. Nav links use onclick JS to switch tabs (see TABS below).
-2. <main> — contains one <section id="tab-N"> per nav section, only one visible at a time.
-3. <footer> — dark background, 3-column links + copyright.
-
-Max content width 1100px, centered with margin: 0 auto.
-
-━━ WORKING TABS ━━
-This is required. Nav links must switch visible sections using only this pattern:
-<script>
-function showTab(n) {{
-  document.querySelectorAll('.tab-section').forEach(function(s){{s.style.display='none';}})
-  var t = document.getElementById('tab-'+n);
-  if(t) t.style.display='block';
-  document.querySelectorAll('.nav-tab').forEach(function(a){{a.classList.remove('active');}})
-  var a = document.querySelector('[data-tab="'+n+'"]');
-  if(a) a.classList.add('active');
-}}
-showTab(1);
-</script>
-Each nav link: <a href="#" class="nav-tab" data-tab="1" onclick="showTab(1);return false;">Home</a>
-Each section: <section id="tab-1" class="tab-section">...</section>
-Generate 4–5 tabs with substantial, relevant content each.
-
-━━ COLOR & VISUAL DESIGN ━━
-- Derive a brand palette from the domain/topic (tech=blue, food=orange, health=green, finance=navy, etc.)
-- 1 primary accent color for buttons, active nav, links. Neutral grays for background (#f8f9fa) and text (#212529).
-- Buttons: background=primary, color=white, border-radius:6px, padding:10px 22px.
-- Cards: background:white, border:1px solid #dee2e6, border-radius:10px, padding:20px, margin-bottom:20px.
-
-━━ CONTENT ━━
-- Rich, detailed content per tab. Real-sounding names, dates, stats — no lorem ipsum.
-- Hero section (in tab 1): large h1 (44px), subheading, one CTA button.
-- Other tabs: article lists, feature grids, contact forms, about text — whatever fits the site.
-- Include a stat band (3–4 large numbers + labels in a row) somewhere relevant.
-
-━━ IMAGES ━━
-For every place an image belongs, use EXACTLY this format (one line, no line breaks inside the tag):
-<img src="" data-latent-img="[precise English description]" alt="[alt text]" style="width:100%;height:220px;object-fit:cover;display:block;border-radius:8px;background:#e8eaed;">
-Include 3–5 such placeholders. Keep the style attribute exactly as shown."""
-
-    # DeepSeek V3: no system_prompt field — embed instructions at top of prompt
     full_prompt = (
-        "You are an expert front-end developer. "
-        "You write clean, valid, self-contained HTML/CSS/JS that always works correctly inside a sandboxed iframe. "
-        "Output ONLY raw HTML starting with <!DOCTYPE html> — no code fences, no markdown, no explanations. "
-        "Every tag must be properly closed. Every script must be inline.\n\n"
-        + prompt
+        "You are a front-end developer. Output ONLY valid HTML starting with <!DOCTYPE html>. "
+        "No markdown, no code fences, no comments outside tags. Close every tag.\n\n"
+        f"Build a clean, realistic webpage for:\n"
+        f"URL: {url}\nTitle: {title}\nDescription: {snippet}\n\n"
+        "RULES:\n"
+        "- body: display:flex;flex-direction:column;min-height:100vh;margin:0;font-family:system-ui,sans-serif\n"
+        "- Sticky <nav> (logo left, 3 links right). Max content width 1100px centered.\n"
+        "- <main flex:1> with a hero (h1 + subtitle + button), then 2-3 content sections (cards or list).\n"
+        "- <footer margin-top:auto> dark bg, copyright.\n"
+        "- Pick one accent color fitting the topic. Cards: white bg, 1px border, border-radius:8px.\n"
+        "- Real content, no lorem ipsum. Concise — aim for ~150 lines of HTML total.\n"
+        "- For images use: <img src=\"\" data-latent-img=\"[description]\" alt=\"[alt]\" "
+        "style=\"width:100%;height:200px;object-fit:cover;border-radius:8px;background:#e8eaed;\">\n"
+        "Include 2-3 image placeholders.\n"
+        "Output the HTML now:"
     )
     payload = {
         "input": {
             "prompt": full_prompt,
-            "max_tokens": 6000,
-            "temperature": 0.6,
-            "top_p": 0.95,
+            "max_tokens": 2500,
+            "temperature": 0.5,
+            "top_p": 0.9,
         }
     }
-    resp = call_replicate(PAGE_MODEL_URL, payload)
+    resp = call_replicate(PAGE_MODEL_URL, payload, max_polls=90)
     if resp.get("error"):
         return {"error": resp["error"], "tokens": []}
 
