@@ -3,7 +3,7 @@
    Uses web-haptics (navigator.vibrate) for mobile
    ========================================== */
 
-import { WebHaptics } from '/node_modules/web-haptics/dist/index.mjs';
+import { WebHaptics } from 'https://cdn.jsdelivr.net/npm/web-haptics/dist/index.mjs';
 
 const haptics = new WebHaptics();
 

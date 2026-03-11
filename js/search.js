@@ -178,7 +178,7 @@ async function showWebResults(query, page) {
 
     try {
         const startTime = performance.now();
-        const response = await fetch('/api/search', {
+        const response = await fetch((window.API_BASE || '') + '/api/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query, page }),
@@ -453,7 +453,7 @@ async function showImageResults(query, page) {
      */
     function streamImages(streamPage, streamCount, skeletonEls, onImage, onDone) {
         const params = new URLSearchParams({ query, page: streamPage, count: streamCount });
-        const es = new EventSource(`/api/images/stream?${params}`);
+        const es = new EventSource((window.API_BASE || '') + `/api/images/stream?${params}`);
         let localIdx = 0;
 
         es.onmessage = (event) => {
@@ -825,8 +825,7 @@ function normalizeSearchResults(payload) {
         if (activeEs) { activeEs.close(); activeEs = null; }
 
         const params = new URLSearchParams({ url, title, snippet });
-        const es = new EventSource(`/api/page/stream?${params}`);
-        activeEs = es;
+        const es = new EventSource((window.API_BASE || '') + `/api/page/stream?${params}`);
 
         let htmlBuffer = '';
 
