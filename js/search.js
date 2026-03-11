@@ -157,7 +157,6 @@ async function showWebResults(query, page) {
     }
 
     // Show loading skeleton
-    if (statsEl) statsEl.textContent = '';
     if (highlightsContainer) highlightsContainer.innerHTML = '';
     if (resultsEl) {
         resultsEl.innerHTML = Array(6).fill('').map(() => `
@@ -176,8 +175,40 @@ async function showWebResults(query, page) {
         `).join('');
     }
 
+    // Loading status ticker
+    const loadingMessages = [
+        'Searching the depths of the internet…',
+        'Consulting extremely reliable sources…',
+        'Cross-referencing with the literature…',
+        'Retrieving information from the web…',
+        'Sifting through billions of pages…',
+        'Finding the most relevant results…',
+        'Indexing real human-written content…',
+        'Scanning for authoritative sources…',
+        'Compiling results from across the web…',
+        'Verifying facts with trusted sources…',
+        'Searching… this might take a moment…',
+        'Still searching, please hold…',
+        'Results are on their way…',
+        'Almost there, we promise…',
+        'Worth the wait, probably…',
+    ];
+    let msgIndex = 0;
+    const startTime = performance.now();
+    const updateStatus = () => {
+        const secs = Math.floor((performance.now() - startTime) / 1000);
+        const mins = Math.floor(secs / 60);
+        const s = secs % 60;
+        const timeStr = mins > 0 ? `${mins}m ${s}s` : `${s}s`;
+        if (statsEl) statsEl.innerHTML =
+            `<span class="loading-status-msg">${loadingMessages[msgIndex % loadingMessages.length]}</span>` +
+            `<span class="loading-status-timer">${timeStr}</span>`;
+        msgIndex++;
+    };
+    updateStatus();
+    const loadingInterval = setInterval(updateStatus, 3000);
+
     try {
-        const startTime = performance.now();
         const response = await fetch((window.API_BASE || '') + '/api/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -193,17 +224,21 @@ async function showWebResults(query, page) {
         const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
 
         if (!response.ok) {
+            clearInterval(loadingInterval);
             const serverError = (data && data.error) ? data.error : `Request failed (${response.status})`;
             if (resultsEl) {
                 resultsEl.innerHTML = `<p style="color:#ea4335;padding:20px 0;">Error: ${escapeHtml(serverError)}</p>`;
             }
+            if (statsEl) statsEl.textContent = '';
             return;
         }
 
         if (data.error) {
+            clearInterval(loadingInterval);
             if (resultsEl) {
                 resultsEl.innerHTML = `<p style="color:#ea4335;padding:20px 0;">Error: ${escapeHtml(data.error)}</p>`;
             }
+            if (statsEl) statsEl.textContent = '';
             return;
         }
 
@@ -211,6 +246,7 @@ async function showWebResults(query, page) {
         const imageHighlights = Array.isArray(data.imageHighlights) ? data.imageHighlights.slice(0, 3) : [];
 
         if (!Array.isArray(results) || results.length === 0) {
+            clearInterval(loadingInterval);
             if (statsEl) statsEl.textContent = '';
             if (resultsEl) {
                 resultsEl.innerHTML = '<p style="color:#70757a;padding:20px 0;">No results found.</p>';
@@ -226,6 +262,7 @@ async function showWebResults(query, page) {
         const resultCount = (Math.floor(Math.random() * 900) + 100) * 1000000;
         const statsText = `About ${resultCount.toLocaleString()} results (${elapsed} seconds)`;
 
+        clearInterval(loadingInterval);
         if (statsEl) {
             statsEl.textContent = statsText;
         }
@@ -243,6 +280,8 @@ async function showWebResults(query, page) {
         writeCache(cacheKey, { results, imageHighlights, statsText });
 
     } catch (err) {
+        clearInterval(loadingInterval);
+        if (statsEl) statsEl.textContent = '';
         console.error('Search error:', err);
         if (resultsEl) {
             resultsEl.innerHTML = `<p style="color:#ea4335;padding:20px 0;">Failed to fetch results. Is the server running?</p>`;
