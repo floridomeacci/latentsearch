@@ -1176,3 +1176,50 @@ select:focus-visible {
     box-shadow: none;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Page generation loading overlay */
+.pv-gen-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: #0f0f11;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 40px;
+}
+.pv-gen-overlay.visible { display: flex; }
+.pv-gen-spinner {
+    width: 38px;
+    height: 38px;
+    border: 3px solid rgba(220,38,38,0.2);
+    border-top-color: #DC2626;
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+    flex-shrink: 0;
+}
+.pv-gen-msg {
+    color: rgba(255,255,255,0.82);
+    font-size: 15px;
+    font-family: system-ui,-apple-system,sans-serif;
+    text-align: center;
+    min-height: 22px;
+    max-width: 380px;
+    transition: opacity 0.4s;
+}
+.pv-gen-msg.fade { opacity: 0; }
+.pv-gen-sub {
+    color: rgba(255,255,255,0.3);
+    font-size: 12px;
+    font-family: system-ui,-apple-system,sans-serif;
+    text-align: center;
+}
+.pv-gen-timer {
+    color: rgba(255,255,255,0.2);
+    font-size: 11px;
+    font-family: system-ui,-apple-system,sans-serif;
+    font-variant-numeric: tabular-nums;
+    margin-top: 4px;
+}

@@ -748,6 +748,12 @@ function normalizeSearchResults(payload) {
             </div>
             <div class="page-viewer-body">
                 <div class="pv-progress-bar" id="pv-progress"><div class="pv-progress-fill" id="pv-progress-fill"></div></div>
+                <div class="pv-gen-overlay" id="pv-gen-overlay">
+                    <div class="pv-gen-spinner"></div>
+                    <div class="pv-gen-msg" id="pv-gen-msg">Designing your page…</div>
+                    <div class="pv-gen-sub">generating this site from scratch</div>
+                    <div class="pv-gen-timer" id="pv-gen-timer"></div>
+                </div>
                 <iframe class="page-viewer-iframe" id="pv-iframe"
                         sandbox="allow-scripts allow-popups allow-forms"
                         title="Page viewer"></iframe>
@@ -765,6 +771,59 @@ function normalizeSearchResults(payload) {
     const progressBar  = document.getElementById('pv-progress');
     const progressFill = document.getElementById('pv-progress-fill');
 
+    const genOverlay  = document.getElementById('pv-gen-overlay');
+    const genMsgEl    = document.getElementById('pv-gen-msg');
+    const genTimerEl  = document.getElementById('pv-gen-timer');
+
+    const _genMessages = [
+        'Designing your page…',
+        'Writing the HTML…',
+        'Picking a color palette…',
+        'Building the navigation…',
+        'Centering the div…',
+        'Adding a hero section…',
+        'Styling the cards…',
+        'Writing the copy…',
+        'Building the footer…',
+        'Making it responsive…',
+        'Polishing the layout…',
+        'Almost there…',
+    ];
+    let _genMsgIdx = 0;
+    let _genMsgInterval = null;
+    let _genTimerInterval = null;
+    let _genStartTime = 0;
+
+    function startGenOverlay() {
+        _genMsgIdx = 0;
+        _genStartTime = Date.now();
+        genMsgEl.textContent = _genMessages[0];
+        genTimerEl.textContent = '';
+        genOverlay.classList.add('visible');
+
+        _genMsgInterval = setInterval(() => {
+            genMsgEl.classList.add('fade');
+            setTimeout(() => {
+                _genMsgIdx = (_genMsgIdx + 1) % _genMessages.length;
+                genMsgEl.textContent = _genMessages[_genMsgIdx];
+                genMsgEl.classList.remove('fade');
+            }, 400);
+        }, 3000);
+
+        _genTimerInterval = setInterval(() => {
+            const s = Math.floor((Date.now() - _genStartTime) / 1000);
+            genTimerEl.textContent = s + 's';
+        }, 1000);
+    }
+
+    function stopGenOverlay() {
+        clearInterval(_genMsgInterval);
+        clearInterval(_genTimerInterval);
+        _genMsgInterval = null;
+        _genTimerInterval = null;
+        genOverlay.classList.remove('visible');
+    }
+
     let history = [];
     let activeEs = null;
     let progressTimer = null;
@@ -777,14 +836,16 @@ function normalizeSearchResults(payload) {
         progressFill.style.transition = 'none';
         progressFill.style.width = '0%';
         faviconEl.classList.add('loading');
-        // Crawl to 85% over ~12s, simulating slow load
+        // Crawl to 85% over ~90s, simulating slow generation
         requestAnimationFrame(() => {
-            progressFill.style.transition = 'width 12s cubic-bezier(0.1,0.4,0.6,1)';
+            progressFill.style.transition = 'width 90s cubic-bezier(0.05,0.3,0.5,1)';
             progressFill.style.width = '85%';
         });
+        startGenOverlay();
     }
 
     function finishProgress() {
+        stopGenOverlay();
         progressFill.style.transition = 'width 0.25s ease';
         progressFill.style.width = '100%';
         faviconEl.classList.remove('loading');
@@ -796,6 +857,7 @@ function normalizeSearchResults(payload) {
     function closeViewer() {
         overlay.classList.remove('open');
         document.body.style.overflow = '';
+        stopGenOverlay();
         if (activeEs) {
             activeEs.close(); activeEs = null;
             // Save whatever we streamed so far so revisit is instant
