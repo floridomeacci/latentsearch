@@ -80,6 +80,9 @@ _search_log: list = []          # last N entries in memory
 _search_log_lock = threading.Lock()
 _SEARCH_LOG_MAX = 10_000        # cap in-memory list
 
+GEN_LOG_FILE = os.environ.get("GEN_LOG_FILE", "query_generations.log")
+_gen_log_lock = threading.Lock()
+
 
 def _log_search(ip: str, query: str) -> None:
     """Append a search entry to the in-memory list and to searches.log on disk."""
@@ -93,6 +96,58 @@ def _log_search(ip: str, query: str) -> None:
             fh.write(json.dumps(entry) + "\n")
     except OSError as exc:
         print(f"[log] could not write searches.log: {exc}")
+
+
+def _append_generation_log(entry: dict) -> None:
+    """Append one JSON entry to the query+generation log file."""
+    try:
+        with _gen_log_lock:
+            with open(GEN_LOG_FILE, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"[log] could not write {GEN_LOG_FILE}: {exc}")
+
+
+def _log_search_generation(ip: str, query: str, page: int, results: list) -> None:
+    """Log search query plus generated text snippets/titles (no images)."""
+    compact_results = []
+    for result in (results or []):
+        compact_results.append(
+            {
+                "title": str(result.get("title", ""))[:300],
+                "snippet": str(result.get("snippet", ""))[:700],
+                "domain": str(result.get("domain", ""))[:200],
+            }
+        )
+
+    entry = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "endpoint": "search",
+        "ip": ip,
+        "query": query,
+        "page": page,
+        "generated": {
+            "result_count": len(compact_results),
+            "results": compact_results,
+        },
+    }
+    _append_generation_log(entry)
+
+
+def _log_page_generation(ip: str, url: str, title: str, snippet: str, content: dict) -> None:
+    """Log page request + generated structured text content (no images)."""
+    entry = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "endpoint": "page_content",
+        "ip": ip,
+        "query": {
+            "url": url,
+            "title": title[:300],
+            "snippet": snippet[:600],
+        },
+        "generated": content,
+    }
+    _append_generation_log(entry)
 
 
 # Security headers added to every response
@@ -791,6 +846,7 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": "Daily search limit reached. Try again tomorrow."}, 429)
             return
         try:
+            client_ip = self._client_ip()
             body = self._read_body()
             query = body.get("query", "")
             page = body.get("page", 1)
@@ -805,7 +861,7 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
                 )
                 return
 
-            _log_search(self._client_ip(), query)
+            _log_search(client_ip, query)
             print(f"[search] q={query!r} page={page}")
             with ThreadPoolExecutor(max_workers=2) as pool:
                 text_future = pool.submit(generate_search_results, query, page)
@@ -818,6 +874,7 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
                 return
 
             image_highlights = image_payload.get("images", []) if isinstance(image_payload, dict) else []
+            _log_search_generation(client_ip, query, int(page), text_payload.get("results", []))
             self._send_json({
                 "results": text_payload.get("results", []),
                 "imageHighlights": image_highlights[:3],
@@ -935,7 +992,10 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
             return
 
         print(f"[page/content] url={url!r}")
+        client_ip = self._client_ip()
         result = generate_page_content(url, title, snippet)
+        if isinstance(result, dict) and isinstance(result.get("content"), dict):
+            _log_page_generation(client_ip, url, title, snippet, result["content"])
         self._send_json(result)
 
 
