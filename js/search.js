@@ -1072,13 +1072,29 @@ function normalizeSearchResults(payload) {
             'main{flex:1;}p{margin-bottom:1em;}p:last-child{margin-bottom:0;}' +
             'img[src=""]{background:' + pal.s + ';display:block;}a{color:inherit;}';
 
+        const mobileCss =
+            '@media (max-width:900px){' +
+            '[style*="display:grid"][style*="grid-template-columns:1fr 1fr"],[style*="display:grid"][style*="grid-template-columns:2fr 1fr"],[style*="display:grid"][style*="grid-template-columns:3fr 1fr"],[style*="display:grid"][style*="grid-template-columns:5fr 2fr"],[style*="display:grid"][style*="grid-template-columns:1fr 1fr 1fr"],[style*="display:grid"][style*="grid-template-columns:2fr 1fr 1fr"],[style*="display:grid"][style*="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"],[style*="display:grid"][style*="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"],[style*="display:grid"][style*="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"]{grid-template-columns:1fr!important;}' +
+            '[style*="position:sticky"][style*="height:100vh"],[style*="position:sticky"][style*="top:80px"],[style*="position:sticky"][style*="top:0"][style*="height:100vh"]{position:static!important;height:auto!important;top:auto!important;}' +
+            '[style*="width:240px"],[style*="min-width:220px"],[style*="width:220px"],[style*="min-width:200px"]{width:100%!important;min-width:0!important;}' +
+            '[style*="grid-column:span 2"]{grid-column:span 1!important;}' +
+            '[style*="float:right"]{float:none!important;width:100%!important;margin:0 0 16px 0!important;}' +
+            '[style*="min-height:600px"]{min-height:460px!important;}' +
+            '[style*="min-height:500px"]{min-height:420px!important;}' +
+            '[style*="height:420px"],[style*="height:400px"],[style*="height:380px"],[style*="height:360px"],[style*="height:320px"],[style*="height:300px"],[style*="height:280px"],[style*="height:260px"]{height:220px!important;}' +
+            '[style*="font-size:clamp(3rem,8vw,7rem)"],[style*="font-size:clamp(3rem,7vw,6rem)"],[style*="font-size:clamp(3rem,8vw,6.5rem)"],[style*="font-size:clamp(2.8rem,7vw,5.5rem)"],[style*="font-size:clamp(2.5rem,6vw,5rem)"],[style*="font-size:clamp(2.5rem,6vw,4.5rem)"]{font-size:clamp(2rem,9vw,3rem)!important;line-height:1.06!important;}' +
+            '[style*="display:flex"][style*="justify-content:space-between"][style*="align-items:center"][style*="height:56px"],[style*="display:flex"][style*="justify-content:space-between"][style*="align-items:center"][style*="height:58px"],[style*="display:flex"][style*="justify-content:space-between"][style*="align-items:center"][style*="height:72px"]{height:auto!important;min-height:56px!important;flex-wrap:wrap!important;row-gap:8px!important;padding-top:10px!important;padding-bottom:10px!important;}' +
+            'main [style*="display:flex"],main [style*="display:grid"]{max-width:100%!important;}' +
+            '}' +
+            '@media (max-width:640px){body{font-size:16px;}nav a{min-height:44px!important;display:inline-flex!important;align-items:center!important;}[style*="display:flex"][style*="gap:24px"],[style*="display:flex"][style*="gap:28px"],[style*="display:flex"][style*="gap:36px"]{gap:12px!important;}main{padding-left:0!important;padding-right:0!important;}}';
+
         function wrapDoc(navH, mainH, footH, extraCss) {
             return '<!DOCTYPE html>\n<html lang="en"><head>' +
                 '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
                 '<link rel="preconnect" href="https://fonts.googleapis.com">' +
                 '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
                 '<link href="https://fonts.googleapis.com/css2?family=' + font.gf + '" rel="stylesheet">' +
-                '<style>' + baseCss + (extraCss || '') + '</style>' +
+                '<style>' + baseCss + mobileCss + (extraCss || '') + '</style>' +
                 '</head><body>' + navH + '<main>' + mainH + '</main>' + footH + inlineScript + '</body></html>';
         }
 
