@@ -1,9 +1,6 @@
 # LatentSearch
 
-<h3>
-  <a href="https://latentsearch.net">🌐 Live at latentsearch.net</a>
-</h3>
-
+**[Visit latentsearch.net](https://latentsearch.net)**
 
 An AI-powered search engine experiment. Generates search results, images, and page previews on the fly using large language models — no crawled index, pure inference.
 
