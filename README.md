@@ -4,6 +4,11 @@ An AI-powered search engine experiment. Generates search results, images, and pa
 
 Made by [floridomeacci.xyz](https://floridomeacci.xyz)
 
+
+## Preview
+
+[![Preview](assets/preview.png)](https://latentsearch.net)
+
 ---
 
 ## Stack
