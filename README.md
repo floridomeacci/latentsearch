@@ -1,5 +1,10 @@
 # LatentSearch
 
+<h3>
+  <a href="https://latentsearch.net">🌐 Live at latentsearch.net</a>
+</h3>
+
+
 An AI-powered search engine experiment. Generates search results, images, and page previews on the fly using large language models — no crawled index, pure inference.
 
 Made by [floridomeacci.xyz](https://floridomeacci.xyz)
