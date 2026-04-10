@@ -1012,7 +1012,7 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    PORT = 8080
+    PORT = int(os.environ.get("PORT", "8180"))
     server = ThreadingHTTPServer(("", PORT), LatentSearchHandler)
     print(f"🔍 LatentSearch server running at http://localhost:{PORT}")
     if API_TOKEN:
