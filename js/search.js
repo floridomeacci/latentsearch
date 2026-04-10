@@ -16,6 +16,33 @@ function triggerLucky() {
     }, 400);
 }
 
+// Robust API POST helper: try configured API_BASE first, then fall back to same-origin path
+async function apiPost(path, body) {
+    const primary = (window.API_BASE || '') + path;
+    try {
+        const resp = await fetch(primary, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        return resp;
+    } catch (err) {
+        // Primary failed (network/CORS) — retry same-origin
+        try {
+            const resp2 = await fetch(path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            return resp2;
+        } catch (err2) {
+            // rethrow original error for visibility
+            err2.original = err;
+            throw err2;
+        }
+    }
+}
+
 function makeCacheKey(kind, query, page) {
     return `${CACHE_PREFIX}:${kind}:${(query || '').trim().toLowerCase()}:${page}`;
 }
@@ -209,11 +236,7 @@ async function showWebResults(query, page) {
     const loadingInterval = setInterval(updateStatus, 3000);
 
     try {
-        const response = await fetch((window.API_BASE || '') + '/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, page }),
-        });
+        const response = await apiPost('/api/search', { query, page });
         const rawText = await response.text();
         let data;
         try {
@@ -492,7 +515,14 @@ async function showImageResults(query, page) {
      */
     function streamImages(streamPage, streamCount, skeletonEls, onImage, onDone) {
         const params = new URLSearchParams({ query, page: streamPage, count: streamCount });
-        const es = new EventSource((window.API_BASE || '') + `/api/images/stream?${params}`);
+        // Try EventSource to configured API_BASE first; if it errors, fallback to a POST polling
+        let es;
+        try {
+            es = new EventSource((window.API_BASE || '') + `/api/images/stream?${params}`);
+        } catch (e) {
+            // EventSource construction can throw in some environments — fall back below
+            es = null;
+        }
         let localIdx = 0;
 
         es.onmessage = (event) => {
@@ -520,9 +550,29 @@ async function showImageResults(query, page) {
             } catch (_e) { /* ignore parse errors */ }
         };
 
-        es.onerror = () => {
-            es.close();
+        es.onerror = async () => {
+            try { if (es) es.close(); } catch (_) {}
+            // Remove remaining skeletons
             skeletonEls.slice(localIdx).forEach(s => s.remove());
+            // Fallback: try POST /api/images to retrieve a batch
+            try {
+                const resp = await apiPost('/api/images', { query, page: streamPage, count: streamCount });
+                const text = await resp.text();
+                const data = JSON.parse(text || '{}');
+                const images = Array.isArray(data.images) ? data.images : [];
+                images.forEach(img => {
+                    const lbIdx = lightboxImages.length;
+                    lightboxImages.push(img);
+                    if (img.url && !imagePool.includes(img.url)) imagePool.push(img.url);
+                    const card = document.createElement('div');
+                    card.innerHTML = renderImageCard(img, query, lbIdx);
+                    const realCard = card.firstElementChild;
+                    grid.appendChild(realCard);
+                    onImage(img);
+                });
+            } catch (_e) {
+                // ignore, we'll just finish
+            }
             onDone();
         };
 

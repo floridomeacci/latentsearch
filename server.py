@@ -834,12 +834,24 @@ class LatentSearchHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_OPTIONS(self):
+        print(f"[CORS OPTIONS] path={self.path} origin={self.headers.get('Origin')}")
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self._add_security_headers()
         self.end_headers()
+
+    def end_headers(self):
+        # Ensure CORS headers are present on every response (covers preflight and static files).
+        # Keep this permissive for now; consider restricting to a known origin in production.
+        try:
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        except Exception:
+            pass
+        super().end_headers()
 
     def _handle_search(self):
         if not _check_daily_limit("search"):
